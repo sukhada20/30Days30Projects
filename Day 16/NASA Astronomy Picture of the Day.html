@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head>
+  <meta charset="UTF-8">
+  <title>NASA Astronomy Picture of the Day</title> 
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+      background-color: #000000; 
+      color: #ffffff; 
+      min-height: 100vh; 
+      display: flex;
+      flex-direction: column; 
+      align-items: center;
+      justify-content: flex-start;
+      padding: 20px; 
+      overflow-x: hidden; 
+      background-image: url('https://www.transparenttextures.com/patterns/stardust.png'); 
+      background-size: cover;
+    }
+    header {
+      text-align: center;
+      margin-bottom: 30px; 
+      animation: fadeInDown 1.5s ease-out;
+    }
+    header h1 {
+      font-size: 2.5rem; 
+      letter-spacing: 2px; 
+      font-weight: 300;
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(255, 255, 255, 0.2); 
+    }
+    .date-picker {
+      display: flex; 
+      align-items: center; 
+      margin-bottom: 40px;
+      animation: fadeInUp 1.5s ease-out;
+    }
+    .date-picker input[type="date"] {
+      padding: 10px 15px; 
+      border: none;
+      border-radius: 5px;
+      background-color: #1a1a1a;
+      color: #ffffff;
+      font-size: 1rem; 
+      margin-right: 15px;
+      outline: none;
+      transition: background-color 0.3s ease;
+    }
+    .date-picker input[type="date"]::before {
+      content: '📅'; 
+      margin-right: 8px; 
+	  text-align: center;
+    }
+    .date-picker input[type="date"]:hover {
+      background-color: #333333;
+    }
+    .date-picker button {
+      padding: 10px 25px;
+      border: none;
+      border-radius: 25px;
+      background-color: #1e90ff; 
+      color: #ffffff; 
+      font-size: 1rem; 
+      cursor: pointer; 
+      transition: background-color 0.3s ease, transform 0.2s ease; 
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3); 
+    }
+    .date-picker button:hover {
+      background-color: #63b3ed; 
+      transform: translateY(-2px);
+    }
+    .date-picker button:active {
+      background-color: #1c86ee; 
+      transform: translateY(0); 
+    }
+    .apod-container {
+      background: rgba(255, 255, 255, 0.05); 
+      backdrop-filter: blur(10px); 
+      padding: 30px; 
+      border-radius: 15px; 
+      width: 100%; 
+      max-width: 800px; 
+      box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); 
+      animation: fadeIn 2s ease-out; 
+    }
+    .apod-title {
+      text-align: center; 
+      font-size: 1.8rem; 
+      margin-bottom: 20px; 
+      font-weight: 400;
+      color: #ffffff;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.5); 
+    }
+    .apod-media {
+      display: flex;
+      justify-content: center; 
+      align-items: center; 
+      margin-bottom: 20px;
+      overflow: hidden; 
+      border-radius: 10px;
+      height: 450px;
+      background-color: #1a1a1a;
+      position: relative;
+    }
+    .apod-media img, .apod-media iframe {
+      max-width: 100%; 
+      max-height: 100%; 
+      border: none;
+      border-radius: 10px;
+      transition: transform 0.5s ease; 
+    }
+    .apod-media img:hover, .apod-media iframe:hover {
+      transform: scale(1.05); 
+    }
+    .apod-explanation {
+      font-size: 1rem;
+      line-height: 1.6;
+      text-align: justify; 
+      color: #dddddd;
+    }
+    footer {
+      margin-top: 40px; 
+      font-size: 0.9rem; 
+      color: #777777; 
+      animation: fadeIn 2s ease-out; 
+    }
+    footer a {
+      color: #1e90ff;
+      text-decoration: none;
+      transition: color 0.3s ease;
+    }
+    footer a:hover {
+      color: #63b3ed;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; } 
+      to { opacity: 1; } 
+    }
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-20px); } 
+      to { opacity: 1; transform: translateY(0); } 
+    }
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); } 
+      to { opacity: 1; transform: translateY(0); } 
+    }
+    @media (max-width: 600px) { 
+      header h1 {
+        font-size: 2rem; 
+      }
+      .apod-container {
+        padding: 20px;
+      }
+      .apod-title {
+        font-size: 1.5rem; 
+      }
+      .apod-media {
+        height: 250px; 
+      }
+      .date-picker {
+        flex-direction: column;
+      }
+      .date-picker input[type="date"] {
+        margin-right: 0; 
+        margin-bottom: 15px; 
+        width: 100%; 
+      }
+      .date-picker button {
+        width: 100%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>🌌 Astronomy Picture of the Day 🌌</h1> 
+  </header>
+  <div class="date-picker">
+    <input type="date" id="apodDate" max="" /> 
+    <button>🔍 View</button> 
+  </div>
+  <div class="apod-container" id="apodContainer">
+    <div class="apod-title" id="apodTitle">Loading...</div>
+    <div class="apod-media" id="apodMedia">
+    </div>
+    <div class="apod-explanation" id="apodExplanation">Please wait while we fetch the Astronomy Picture of the Day.</div> 
+  </div>
+
+  <footer>
+    <p>Data provided by <a href="https://api.nasa.gov/" target="_blank" rel="noopener">NASA's APOD API</a></p> 
+  </footer>
+  <script>
+    const ApiKey = 'n22FU3po36uILgvO43d6YSRgzHfNylAbmdVlVcx2'; 
+    document.addEventListener('DOMContentLoaded', () => { 
+      const today = new Date().toISOString().split('T')[0]; 
+      document.getElementById('apodDate').setAttribute('max', today); 
+      fetchAPOD(); 
+    });
+    async function fetchAPOD(date) { 
+      const apodTitle = document.getElementById('apodTitle'); 
+      const apodMedia = document.getElementById('apodMedia'); 
+      const apodExplanation = document.getElementById('apodExplanation'); 
+      apodTitle.textContent = 'Loading...'; 
+      apodMedia.innerHTML = ''; 
+      apodExplanation.textContent = 'Please wait while we fetch the Astronomy Picture of the Day.'; 
+
+      let ApiUrl = `https://api.nasa.gov/planetary/apod?api_key=${ApiKey}`; 
+
+      if (date) { 
+        ApiUrl += `&date=${date}`; 
+      } else {
+        const today = new Date().toISOString().split('T')[0]; 
+        AgnirvaapiUrl += `&date=${today}`; 
+      }
+      try {
+        const response = await fetch(ApiUrl); 
+        if (!response.ok) { 
+          throw new Error(`Error: ${response.status} ${response.statusText}`); 
+        }
+        const data = await response.json(); 
+        apodTitle.textContent = data.title; 
+        if (data.media_type === 'image') { 
+          const img = document.createElement('img'); 
+          img.src = data.hdurl || data.url; 
+          img.alt = data.title; 
+          apodMedia.appendChild(img); 
+        } else if (data.media_type === 'video') { 
+          const iframe = document.createElement('iframe'); 
+          iframe.src = data.url; 
+          iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture'; 
+          iframe.allowFullscreen = true; 
+          apodMedia.appendChild(iframe); 
+        } else {
+          apodMedia.textContent = 'Media type not supported.'; 
+        }
+        apodExplanation.textContent = data.explanation; 
+      } catch (error) { 
+        apodTitle.textContent = 'Error Fetching APOD'; 
+        apodExplanation.textContent = error.message; 
+      }
+    }
+    function getSelectedDate() { 
+      const dateInput = document.getElementById('apodDate').value; 
+      if (dateInput) { 
+        return dateInput; 
+      }
+      return null; 
+    }
+    function fetchAPODWrapper() { 
+      const selectedDate = getSelectedDate(); 
+      fetchAPOD(selectedDate); 
+    }
+    document.querySelector('.date-picker button').addEventListener('click', fetchAPODWrapper); 
+  </script>
+</body>
+</html>
