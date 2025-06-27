@@ -1,0 +1,1385 @@
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solar Risk Alerts Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #e2e8f0;
+        }
+        
+        .risk-card {
+            transition: all 0.3s ease;
+        }
+        
+        .risk-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .alert-banner {
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% {
+                background-color: rgba(239, 68, 68, 0.9);
+            }
+            50% {
+                background-color: rgba(239, 68, 68, 0.7);
+            }
+            100% {
+                background-color: rgba(239, 68, 68, 0.9);
+            }
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-green {
+            background-color: #10b981;
+            box-shadow: 0 0 10px #10b981;
+        }
+        
+        .status-yellow {
+            background-color: #f59e0b;
+            box-shadow: 0 0 10px #f59e0b;
+        }
+        
+        .status-orange {
+            background-color: #f97316;
+            box-shadow: 0 0 10px #f97316;
+        }
+        
+        .status-red {
+            background-color: #ef4444;
+            box-shadow: 0 0 10px #ef4444;
+        }
+        
+        .chart-container {
+            height: 120px;
+            width: 100%;
+        }
+        
+        .tab-active {
+            border-bottom: 2px solid #3b82f6;
+            color: #3b82f6;
+        }
+        
+        .modal {
+            transition: opacity 0.3s ease, visibility 0.3s ease;
+        }
+        
+        .quiz-option:hover {
+            background-color: #1e293b;
+        }
+        
+        .quiz-option.selected {
+            background-color: #3b82f6;
+            color: white;
+        }
+        
+        .reminder-card {
+            transition: all 0.3s ease;
+        }
+        
+        .reminder-card:hover {
+            transform: translateY(-3px);
+        }
+        
+        .guide-card {
+            transition: all 0.3s ease;
+        }
+        
+        .guide-card:hover {
+            transform: translateY(-3px);
+        }
+    </style>
+</head>
+<body>
+    <div class="min-h-screen p-4 md:p-6">
+        <!-- Header -->
+        <header class="mb-6">
+            <div class="flex flex-col md:flex-row justify-between items-start md:items-center">
+                <div>
+                    <h1 class="text-2xl md:text-3xl font-bold text-white flex items-center">
+                        <i class="fas fa-sun text-yellow-400 mr-3"></i>
+                        Solar Risk Alerts
+                    </h1>
+                    <p class="text-slate-400 mt-1">Real-time space weather monitoring dashboard</p>
+                </div>
+                <div class="mt-4 md:mt-0 bg-slate-800 rounded-lg p-3 flex flex-col md:flex-row items-start md:items-center">
+                    <div class="mr-6">
+                        <p class="text-xs text-slate-400">UTC TIME</p>
+                        <p class="text-lg font-semibold" id="utc-time">--:--:--</p>
+                    </div>
+                    <div>
+                        <p class="text-xs text-slate-400">LOCAL TIME (IST)</p>
+                        <p class="text-lg font-semibold" id="ist-time">--:--:--</p>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="mb-6 border-b border-slate-700">
+            <div class="flex overflow-x-auto">
+                <button class="tab-btn tab-active px-4 py-3 font-medium text-sm focus:outline-none" data-tab="dashboard">
+                    <i class="fas fa-chart-line mr-2"></i>Dashboard
+                </button>
+                <button class="tab-btn px-4 py-3 font-medium text-sm focus:outline-none" data-tab="guides">
+                    <i class="fas fa-shield-alt mr-2"></i>Protection Guides
+                </button>
+                <button class="tab-btn px-4 py-3 font-medium text-sm focus:outline-none" data-tab="quiz">
+                    <i class="fas fa-clipboard-list mr-2"></i>Skin Type Quiz
+                </button>
+                <button class="tab-btn px-4 py-3 font-medium text-sm focus:outline-none" data-tab="reminders">
+                    <i class="fas fa-bell mr-2"></i>Sunscreen Reminders
+                </button>
+            </div>
+        </div>
+
+        <!-- Alert Banner (visible when there's a high risk) -->
+        <div id="alert-banner" class="hidden mb-6 alert-banner rounded-lg p-4 text-white font-medium flex items-center justify-between">
+            <div class="flex items-center">
+                <i class="fas fa-exclamation-triangle mr-3 text-xl"></i>
+                <span id="alert-message">High risk alert: Solar flare activity detected</span>
+            </div>
+            <button class="text-white hover:text-slate-200" onclick="dismissAlert()">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- Main Content Area -->
+        <div id="content-area">
+            <!-- Dashboard Tab Content -->
+            <div id="dashboard-tab" class="tab-content">
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <!-- Solar Flares Card -->
+                    <div class="risk-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-semibold">Solar Flares</h2>
+                                <div class="flex items-center">
+                                    <span class="status-indicator status-red" id="solar-flare-status"></span>
+                                    <span class="font-medium text-red-400" id="solar-flare-level">High Risk</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <p class="text-slate-400 text-sm">X-ray Flux</p>
+                                    <p class="text-2xl font-bold" id="xray-flux">X2.1</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-slate-400 text-sm">Class</p>
+                                    <p class="text-xl font-semibold" id="flare-class">X-Class</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container p-2 bg-slate-900">
+                            <canvas id="solar-flare-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Geomagnetic Storms Card -->
+                    <div class="risk-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-semibold">Geomagnetic Storms</h2>
+                                <div class="flex items-center">
+                                    <span class="status-indicator status-yellow" id="geomagnetic-status"></span>
+                                    <span class="font-medium text-yellow-400" id="geomagnetic-level">Moderate Risk</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-slate-400 text-sm">IMF Bz</p>
+                                    <p class="text-2xl font-bold" id="imf-bz">-8.2 nT</p>
+                                </div>
+                                <div>
+                                    <p class="text-slate-400 text-sm">Solar Wind</p>
+                                    <p class="text-2xl font-bold" id="solar-wind">486 km/s</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container p-2 bg-slate-900">
+                            <canvas id="geomagnetic-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Solar Radiation Card -->
+                    <div class="risk-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-semibold">Solar Radiation</h2>
+                                <div class="flex items-center">
+                                    <span class="status-indicator status-green" id="radiation-status"></span>
+                                    <span class="font-medium text-green-400" id="radiation-level">Low Risk</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <p class="text-slate-400 text-sm">Proton Flux</p>
+                                    <p class="text-2xl font-bold" id="proton-flux">0.8 pfu</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-slate-400 text-sm">24h Change</p>
+                                    <p class="text-xl font-semibold text-green-400" id="proton-change">-0.2</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container p-2 bg-slate-900">
+                            <canvas id="radiation-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- UV Index Card -->
+                    <div class="risk-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="p-5">
+                            <div class="flex justify-between items-center mb-4">
+                                <h2 class="text-lg font-semibold">Local UV Index</h2>
+                                <div class="flex items-center">
+                                    <span class="status-indicator status-orange" id="uv-status"></span>
+                                    <span class="font-medium text-orange-400" id="uv-level">High</span>
+                                </div>
+                            </div>
+                            <div class="flex items-end justify-between">
+                                <div>
+                                    <p class="text-slate-400 text-sm">Nagpur, India</p>
+                                    <p class="text-2xl font-bold" id="uv-index">8.4</p>
+                                </div>
+                                <div class="text-right">
+                                    <p class="text-slate-400 text-sm">Protection</p>
+                                    <p class="text-xl font-semibold text-orange-400">Required</p>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="chart-container p-2 bg-slate-900">
+                            <canvas id="uv-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Protection Guides Tab Content -->
+            <div id="guides-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold mb-4">Protection Guides</h2>
+                    <p class="text-slate-400">Learn how to protect yourself from solar and UV radiation risks.</p>
+                </div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Solar Flares Guide -->
+                    <div class="guide-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="bg-gradient-to-r from-red-500 to-red-700 p-4">
+                            <h3 class="text-lg font-semibold text-white">Solar Flares Protection</h3>
+                        </div>
+                        <div class="p-5">
+                            <div class="mb-4">
+                                <p class="text-slate-300 mb-3">Solar flares can disrupt communications and power grids. Here's how to prepare:</p>
+                                <ul class="list-disc pl-5 text-slate-300 space-y-2">
+                                    <li>Keep backup power sources charged</li>
+                                    <li>Download offline maps and important information</li>
+                                    <li>Have alternative communication methods ready</li>
+                                    <li>Follow alerts from space weather agencies</li>
+                                </ul>
+                            </div>
+                            <button class="w-full bg-red-600 hover:bg-red-700 text-white py-2 px-4 rounded-lg transition duration-300" onclick="showGuideDetails('solar-flares')">
+                                Read More
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Geomagnetic Storms Guide -->
+                    <div class="guide-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="bg-gradient-to-r from-yellow-500 to-yellow-700 p-4">
+                            <h3 class="text-lg font-semibold text-white">Geomagnetic Storms Protection</h3>
+                        </div>
+                        <div class="p-5">
+                            <div class="mb-4">
+                                <p class="text-slate-300 mb-3">Geomagnetic storms can affect power grids and satellites:</p>
+                                <ul class="list-disc pl-5 text-slate-300 space-y-2">
+                                    <li>Unplug sensitive electronic equipment during severe storms</li>
+                                    <li>Have backup plans for GPS-dependent activities</li>
+                                    <li>Be prepared for potential power outages</li>
+                                    <li>Keep emergency supplies on hand</li>
+                                </ul>
+                            </div>
+                            <button class="w-full bg-yellow-600 hover:bg-yellow-700 text-white py-2 px-4 rounded-lg transition duration-300" onclick="showGuideDetails('geomagnetic')">
+                                Read More
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Solar Radiation Guide -->
+                    <div class="guide-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="bg-gradient-to-r from-green-500 to-green-700 p-4">
+                            <h3 class="text-lg font-semibold text-white">Solar Radiation Protection</h3>
+                        </div>
+                        <div class="p-5">
+                            <div class="mb-4">
+                                <p class="text-slate-300 mb-3">Solar radiation can be harmful, especially for travelers:</p>
+                                <ul class="list-disc pl-5 text-slate-300 space-y-2">
+                                    <li>Avoid air travel during severe solar radiation events</li>
+                                    <li>Pregnant women and those with health concerns should consult doctors</li>
+                                    <li>Astronauts and aviation personnel follow special protocols</li>
+                                    <li>Monitor space weather forecasts before long flights</li>
+                                </ul>
+                            </div>
+                            <button class="w-full bg-green-600 hover:bg-green-700 text-white py-2 px-4 rounded-lg transition duration-300" onclick="showGuideDetails('radiation')">
+                                Read More
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- UV Protection Guide -->
+                    <div class="guide-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="bg-gradient-to-r from-orange-500 to-orange-700 p-4">
+                            <h3 class="text-lg font-semibold text-white">UV Protection Guide</h3>
+                        </div>
+                        <div class="p-5">
+                            <div class="mb-4">
+                                <p class="text-slate-300 mb-3">Protect yourself from harmful UV radiation:</p>
+                                <ul class="list-disc pl-5 text-slate-300 space-y-2">
+                                    <li>Apply SPF 30+ sunscreen every 2 hours</li>
+                                    <li>Wear protective clothing, hats, and sunglasses</li>
+                                    <li>Seek shade between 10 AM and 4 PM</li>
+                                    <li>Be extra cautious near reflective surfaces (water, sand, snow)</li>
+                                </ul>
+                            </div>
+                            <button class="w-full bg-orange-600 hover:bg-orange-700 text-white py-2 px-4 rounded-lg transition duration-300" onclick="showGuideDetails('uv')">
+                                Read More
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Skin Health Guide -->
+                    <div class="guide-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="bg-gradient-to-r from-blue-500 to-blue-700 p-4">
+                            <h3 class="text-lg font-semibold text-white">Skin Health Guide</h3>
+                        </div>
+                        <div class="p-5">
+                            <div class="mb-4">
+                                <p class="text-slate-300 mb-3">Maintain healthy skin despite UV exposure:</p>
+                                <ul class="list-disc pl-5 text-slate-300 space-y-2">
+                                    <li>Perform regular skin self-examinations</li>
+                                    <li>Know your skin type and its sensitivity</li>
+                                    <li>Use moisturizers with SPF daily</li>
+                                    <li>See a dermatologist annually for skin checks</li>
+                                </ul>
+                            </div>
+                            <button class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-300" onclick="showGuideDetails('skin')">
+                                Read More
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Children Protection Guide -->
+                    <div class="guide-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="bg-gradient-to-r from-purple-500 to-purple-700 p-4">
+                            <h3 class="text-lg font-semibold text-white">Children Protection Guide</h3>
+                        </div>
+                        <div class="p-5">
+                            <div class="mb-4">
+                                <p class="text-slate-300 mb-3">Special considerations for protecting children:</p>
+                                <ul class="list-disc pl-5 text-slate-300 space-y-2">
+                                    <li>Use baby-safe sunscreen for children over 6 months</li>
+                                    <li>Keep infants under 6 months out of direct sunlight</li>
+                                    <li>Dress children in UV-protective clothing</li>
+                                    <li>Schedule outdoor activities in early morning or late afternoon</li>
+                                </ul>
+                            </div>
+                            <button class="w-full bg-purple-600 hover:bg-purple-700 text-white py-2 px-4 rounded-lg transition duration-300" onclick="showGuideDetails('children')">
+                                Read More
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Skin Type Quiz Tab Content -->
+            <div id="quiz-tab" class="tab-content hidden">
+                <div class="mb-6">
+                    <h2 class="text-xl font-bold mb-4">Skin Type Quiz</h2>
+                    <p class="text-slate-400">Determine your Fitzpatrick skin type to understand your sensitivity to UV radiation.</p>
+                </div>
+                
+                <div class="bg-slate-800 rounded-xl p-6 shadow-lg">
+                    <div id="quiz-container">
+                        <div id="quiz-progress" class="mb-6">
+                            <div class="flex justify-between text-sm text-slate-400 mb-2">
+                                <span>Question <span id="current-question">1</span> of 6</span>
+                                <span id="quiz-percentage">0%</span>
+                            </div>
+                            <div class="w-full bg-slate-700 rounded-full h-2">
+                                <div id="progress-bar" class="bg-blue-500 h-2 rounded-full" style="width: 0%"></div>
+                            </div>
+                        </div>
+                        
+                        <div id="question-container" class="mb-6">
+                            <!-- Questions will be dynamically inserted here -->
+                        </div>
+                        
+                        <div class="flex justify-between">
+                            <button id="prev-btn" class="bg-slate-700 hover:bg-slate-600 text-white py-2 px-6 rounded-lg transition duration-300 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                                Previous
+                            </button>
+                            <button id="next-btn" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg transition duration-300">
+                                Next
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="quiz-result" class="hidden">
+                        <h3 class="text-xl font-bold mb-4">Your Skin Type Result</h3>
+                        <div class="bg-slate-700 rounded-lg p-5 mb-6">
+                            <div class="flex items-center mb-4">
+                                <div id="result-icon" class="text-4xl mr-4">👤</div>
+                                <div>
+                                    <h4 id="skin-type-title" class="text-lg font-semibold">Skin Type</h4>
+                                    <p id="skin-type-description" class="text-slate-300">Description will appear here</p>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <h5 class="font-medium mb-2">UV Sensitivity:</h5>
+                                <div id="sensitivity-meter" class="w-full h-3 bg-slate-600 rounded-full overflow-hidden">
+                                    <div id="sensitivity-level" class="h-full bg-gradient-to-r from-green-500 to-red-500" style="width: 50%"></div>
+                                </div>
+                                <div class="flex justify-between text-xs mt-1">
+                                    <span>Less Sensitive</span>
+                                    <span>More Sensitive</span>
+                                </div>
+                            </div>
+                            <div class="mb-4">
+                                <h5 class="font-medium mb-2">Recommended SPF:</h5>
+                                <p id="recommended-spf" class="text-lg font-bold">SPF 30+</p>
+                            </div>
+                            <div>
+                                <h5 class="font-medium mb-2">Sunburn Risk:</h5>
+                                <p id="sunburn-risk" class="text-slate-300">Risk description will appear here</p>
+                            </div>
+                        </div>
+                        <button id="retake-quiz" class="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-300">
+                            Retake Quiz
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sunscreen Reminders Tab Content -->
+            <div id="reminders-tab" class="tab-content hidden">
+                <div class="mb-6 flex flex-col md:flex-row justify-between items-start md:items-center">
+                    <div>
+                        <h2 class="text-xl font-bold mb-2">Sunscreen Reminders</h2>
+                        <p class="text-slate-400">Set up reminders to reapply sunscreen throughout the day.</p>
+                    </div>
+                    <button id="add-reminder-btn" class="mt-4 md:mt-0 bg-blue-600 hover:bg-blue-700 text-white py-2 px-4 rounded-lg transition duration-300 flex items-center">
+                        <i class="fas fa-plus mr-2"></i> Add Reminder
+                    </button>
+                </div>
+                
+                <div id="reminders-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Sample reminder cards -->
+                    <div class="reminder-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="bg-gradient-to-r from-blue-500 to-blue-700 p-4 flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-white">Morning Reminder</h3>
+                            <div class="flex">
+                                <button class="text-white hover:text-slate-200 mr-2" onclick="editReminder(1)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-white hover:text-slate-200" onclick="deleteReminder(1)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            <div class="flex items-center mb-4">
+                                <i class="fas fa-clock text-blue-400 mr-3 text-xl"></i>
+                                <span class="text-xl font-semibold">9:00 AM</span>
+                            </div>
+                            <div class="mb-4">
+                                <p class="text-slate-300">Apply sunscreen before going outside</p>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas fa-repeat text-slate-400 mr-2"></i>
+                                    <span class="text-slate-400">Daily</span>
+                                </div>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" checked>
+                                    <div class="relative w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="reminder-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="bg-gradient-to-r from-purple-500 to-purple-700 p-4 flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-white">Midday Reminder</h3>
+                            <div class="flex">
+                                <button class="text-white hover:text-slate-200 mr-2" onclick="editReminder(2)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-white hover:text-slate-200" onclick="deleteReminder(2)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            <div class="flex items-center mb-4">
+                                <i class="fas fa-clock text-purple-400 mr-3 text-xl"></i>
+                                <span class="text-xl font-semibold">12:30 PM</span>
+                            </div>
+                            <div class="mb-4">
+                                <p class="text-slate-300">Reapply sunscreen for lunch outside</p>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas fa-repeat text-slate-400 mr-2"></i>
+                                    <span class="text-slate-400">Weekdays</span>
+                                </div>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" checked>
+                                    <div class="relative w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="reminder-card bg-slate-800 rounded-xl overflow-hidden shadow-lg">
+                        <div class="bg-gradient-to-r from-orange-500 to-orange-700 p-4 flex justify-between items-center">
+                            <h3 class="text-lg font-semibold text-white">Afternoon Reminder</h3>
+                            <div class="flex">
+                                <button class="text-white hover:text-slate-200 mr-2" onclick="editReminder(3)">
+                                    <i class="fas fa-edit"></i>
+                                </button>
+                                <button class="text-white hover:text-slate-200" onclick="deleteReminder(3)">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            <div class="flex items-center mb-4">
+                                <i class="fas fa-clock text-orange-400 mr-3 text-xl"></i>
+                                <span class="text-xl font-semibold">3:00 PM</span>
+                            </div>
+                            <div class="mb-4">
+                                <p class="text-slate-300">Reapply sunscreen for afternoon activities</p>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center">
+                                    <i class="fas fa-repeat text-slate-400 mr-2"></i>
+                                    <span class="text-slate-400">Daily</span>
+                                </div>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="checkbox" class="sr-only peer" checked>
+                                    <div class="relative w-11 h-6 bg-slate-600 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="no-reminders" class="hidden text-center py-10">
+                    <div class="text-5xl mb-4">⏰</div>
+                    <h3 class="text-xl font-semibold mb-2">No Reminders Set</h3>
+                    <p class="text-slate-400 mb-6">You haven't set any sunscreen reminders yet.</p>
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg transition duration-300" onclick="document.getElementById('add-reminder-btn').click()">
+                        Set Your First Reminder
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="mt-8 text-center text-slate-500 text-sm">
+            <p>Data refreshes automatically every 5 minutes. Last updated: <span id="last-updated">--:--:--</span></p>
+        </footer>
+    </div>
+
+    <!-- Guide Details Modal -->
+    <div id="guide-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-800 rounded-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 id="guide-modal-title" class="text-xl font-bold">Guide Title</h3>
+                    <button class="text-slate-400 hover:text-white" onclick="closeGuideModal()">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <div id="guide-modal-content">
+                    <!-- Content will be dynamically inserted here -->
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg transition duration-300" onclick="closeGuideModal()">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add/Edit Reminder Modal -->
+    <div id="reminder-modal" class="modal fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center hidden">
+        <div class="bg-slate-800 rounded-xl max-w-md w-full mx-4">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h3 id="reminder-modal-title" class="text-xl font-bold">Add Reminder</h3>
+                    <button class="text-slate-400 hover:text-white" onclick="closeReminderModal()">
+                        <i class="fas fa-times text-xl"></i>
+                    </button>
+                </div>
+                <form id="reminder-form">
+                    <div class="mb-4">
+                        <label class="block text-slate-300 mb-2" for="reminder-name">Reminder Name</label>
+                        <input type="text" id="reminder-name" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., Morning Sunscreen">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-slate-300 mb-2" for="reminder-time">Time</label>
+                        <input type="time" id="reminder-time" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-slate-300 mb-2" for="reminder-note">Note (Optional)</label>
+                        <textarea id="reminder-note" class="w-full bg-slate-700 border border-slate-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:ring-2 focus:ring-blue-500 h-20" placeholder="Add a note for this reminder"></textarea>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-slate-300 mb-2">Repeat</label>
+                        <div class="grid grid-cols-4 gap-2">
+                            <button type="button" class="repeat-option bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-center" data-value="daily">Daily</button>
+                            <button type="button" class="repeat-option bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-center" data-value="weekdays">Weekdays</button>
+                            <button type="button" class="repeat-option bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-center" data-value="weekends">Weekends</button>
+                            <button type="button" class="repeat-option bg-slate-700 hover:bg-slate-600 py-2 rounded-lg text-center" data-value="custom">Custom</button>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="button" class="bg-slate-700 hover:bg-slate-600 text-white py-2 px-6 rounded-lg transition duration-300 mr-3" onclick="closeReminderModal()">
+                            Cancel
+                        </button>
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white py-2 px-6 rounded-lg transition duration-300">
+                            Save Reminder
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize time displays
+        function updateTime() {
+            const now = new Date();
+            
+            // UTC Time
+            const utcHours = now.getUTCHours().toString().padStart(2, '0');
+            const utcMinutes = now.getUTCMinutes().toString().padStart(2, '0');
+            const utcSeconds = now.getUTCSeconds().toString().padStart(2, '0');
+            document.getElementById('utc-time').textContent = `${utcHours}:${utcMinutes}:${utcSeconds}`;
+            
+            // IST Time (UTC+5:30)
+            const istTime = new Date(now.getTime() + (5.5 * 60 * 60 * 1000));
+            const istHours = istTime.getUTCHours().toString().padStart(2, '0');
+            const istMinutes = istTime.getUTCMinutes().toString().padStart(2, '0');
+            const istSeconds = istTime.getUTCSeconds().toString().padStart(2, '0');
+            document.getElementById('ist-time').textContent = `${istHours}:${istMinutes}:${istSeconds}`;
+            
+            // Last updated
+            document.getElementById('last-updated').textContent = `${utcHours}:${utcMinutes}:${utcSeconds} UTC`;
+        }
+        
+        setInterval(updateTime, 1000);
+        updateTime();
+        
+        // Tab navigation
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const tabContents = document.querySelectorAll('.tab-content');
+        
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                const tabName = button.getAttribute('data-tab');
+                
+                // Update active tab button
+                tabButtons.forEach(btn => btn.classList.remove('tab-active'));
+                button.classList.add('tab-active');
+                
+                // Show selected tab content
+                tabContents.forEach(content => content.classList.add('hidden'));
+                document.getElementById(`${tabName}-tab`).classList.remove('hidden');
+            });
+        });
+        
+        // Dismiss alert function
+        function dismissAlert() {
+            document.getElementById('alert-banner').classList.add('hidden');
+        }
+        
+        // Sample data for charts (would be replaced with real API data)
+        const timeLabels = ['6h ago', '5h ago', '4h ago', '3h ago', '2h ago', '1h ago', 'Now'];
+        
+        // Create charts
+        function createCharts() {
+            const chartOptions = {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: {
+                            display: false,
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: {
+                                size: 9
+                            }
+                        }
+                    },
+                    y: {
+                        display: true,
+                        grid: {
+                            color: 'rgba(148, 163, 184, 0.1)',
+                            drawBorder: false
+                        },
+                        ticks: {
+                            color: '#94a3b8',
+                            font: {
+                                size: 9
+                            }
+                        }
+                    }
+                },
+                elements: {
+                    line: {
+                        tension: 0.4
+                    },
+                    point: {
+                        radius: 2
+                    }
+                }
+            };
+            
+            // Solar Flare Chart
+            new Chart(document.getElementById('solar-flare-chart'), {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'X-ray Flux',
+                        data: [0.4, 0.6, 0.8, 1.2, 1.6, 1.9, 2.1],
+                        borderColor: '#ef4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.2)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            // Geomagnetic Chart
+            new Chart(document.getElementById('geomagnetic-chart'), {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'IMF Bz',
+                        data: [-3.2, -4.1, -5.5, -6.8, -7.4, -8.0, -8.2],
+                        borderColor: '#f59e0b',
+                        backgroundColor: 'rgba(245, 158, 11, 0.2)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            // Radiation Chart
+            new Chart(document.getElementById('radiation-chart'), {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'Proton Flux',
+                        data: [1.2, 1.1, 1.0, 0.9, 0.9, 0.8, 0.8],
+                        borderColor: '#10b981',
+                        backgroundColor: 'rgba(16, 185, 129, 0.2)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+            
+            // UV Chart
+            new Chart(document.getElementById('uv-chart'), {
+                type: 'line',
+                data: {
+                    labels: timeLabels,
+                    datasets: [{
+                        label: 'UV Index',
+                        data: [2.1, 3.5, 5.2, 6.8, 7.9, 8.2, 8.4],
+                        borderColor: '#f97316',
+                        backgroundColor: 'rgba(249, 115, 22, 0.2)',
+                        fill: true
+                    }]
+                },
+                options: chartOptions
+            });
+        }
+        
+        // Initialize charts
+        createCharts();
+        
+        // Simulate real-time data updates
+        function simulateDataUpdates() {
+            // This would be replaced with actual API calls in a real implementation
+            
+            // Randomly decide if we should show an alert (for demo purposes)
+            if (Math.random() > 0.7) {
+                document.getElementById('alert-banner').classList.remove('hidden');
+                document.getElementById('alert-banner').classList.add('flex');
+                
+                const alertTypes = [
+                    "High risk alert: X-class solar flare detected",
+                    "Warning: Severe geomagnetic storm in progress",
+                    "Alert: Elevated radiation levels detected",
+                    "Warning: Extreme UV levels expected today"
+                ];
+                
+                document.getElementById('alert-message').textContent = alertTypes[Math.floor(Math.random() * alertTypes.length)];
+            }
+            
+            // Update status indicators randomly (for demo)
+            const statuses = ['green', 'yellow', 'orange', 'red'];
+            const levels = ['Low Risk', 'Moderate Risk', 'High Risk', 'Severe Risk'];
+            const levelColors = ['text-green-400', 'text-yellow-400', 'text-orange-400', 'text-red-400'];
+            
+            // Update Solar Flare status
+            const flareIndex = Math.floor(Math.random() * 4);
+            document.getElementById('solar-flare-status').className = `status-indicator status-${statuses[flareIndex]}`;
+            document.getElementById('solar-flare-level').className = `font-medium ${levelColors[flareIndex]}`;
+            document.getElementById('solar-flare-level').textContent = levels[flareIndex];
+            
+            // Update other statuses similarly...
+            // (Code omitted for brevity but would follow the same pattern)
+        }
+        
+        // Update data every 5 minutes
+        setInterval(simulateDataUpdates, 5 * 60 * 1000);
+        
+        // Initial data update
+        simulateDataUpdates();
+        
+        // Guide Details Modal Functions
+        function showGuideDetails(guideType) {
+            const modal = document.getElementById('guide-modal');
+            const modalTitle = document.getElementById('guide-modal-title');
+            const modalContent = document.getElementById('guide-modal-content');
+            
+            // Set title and content based on guide type
+            switch(guideType) {
+                case 'solar-flares':
+                    modalTitle.textContent = 'Solar Flares Protection Guide';
+                    modalContent.innerHTML = `
+                        <div class="space-y-4">
+                            <p>Solar flares are sudden bursts of energy from the sun's surface. They can cause radio blackouts, GPS errors, and in extreme cases, power grid disruptions.</p>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">How to Prepare:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Keep backup power sources like power banks and batteries charged</li>
+                                <li>Download offline maps and important information before traveling</li>
+                                <li>Have alternative communication methods ready (radio, landline)</li>
+                                <li>Follow alerts from space weather agencies like NOAA</li>
+                                <li>For critical operations, have backup systems in place</li>
+                            </ul>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">During a Major Solar Flare:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Be prepared for possible GPS inaccuracies</li>
+                                <li>Expect potential radio communication disruptions</li>
+                                <li>Follow official guidance from emergency management agencies</li>
+                                <li>Avoid unnecessary reliance on satellite-based systems</li>
+                            </ul>
+                            
+                            <div class="bg-slate-700 p-4 rounded-lg">
+                                <h4 class="text-lg font-semibold text-yellow-400 mb-2">Did You Know?</h4>
+                                <p>The most powerful solar flare ever recorded was the Carrington Event in 1859, which caused telegraph systems to fail and set paper on fire in telegraph offices!</p>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'geomagnetic':
+                    modalTitle.textContent = 'Geomagnetic Storms Protection Guide';
+                    modalContent.innerHTML = `
+                        <div class="space-y-4">
+                            <p>Geomagnetic storms occur when solar wind disturbs Earth's magnetosphere. They can affect power grids, satellites, and radio communications.</p>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">Protective Measures:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Unplug sensitive electronic equipment during severe geomagnetic storms</li>
+                                <li>Have backup plans for GPS-dependent activities</li>
+                                <li>Be prepared for potential power outages with emergency supplies</li>
+                                <li>Keep flashlights, batteries, and emergency radios available</li>
+                                <li>Follow updates from space weather forecasting centers</li>
+                            </ul>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">For Critical Infrastructure:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Power companies may implement protective measures during severe storms</li>
+                                <li>Aviation authorities may reroute polar flights</li>
+                                <li>Satellite operators may put spacecraft in safe mode</li>
+                            </ul>
+                            
+                            <div class="bg-slate-700 p-4 rounded-lg">
+                                <h4 class="text-lg font-semibold text-yellow-400 mb-2">Aurora Viewing</h4>
+                                <p>Geomagnetic storms create beautiful auroras (Northern/Southern Lights). If you're in a location where they're visible, enjoy the spectacular light show while staying safe!</p>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'radiation':
+                    modalTitle.textContent = 'Solar Radiation Protection Guide';
+                    modalContent.innerHTML = `
+                        <div class="space-y-4">
+                            <p>Solar radiation storms occur when the sun releases high-energy particles. These can be hazardous for astronauts, aviation personnel, and sensitive electronics.</p>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">For Air Travelers:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Consider postponing air travel during severe solar radiation events</li>
+                                <li>Pregnant women and those with health concerns should consult doctors before flying during solar radiation events</li>
+                                <li>Frequent flyers may want to monitor their radiation exposure</li>
+                            </ul>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">For General Public:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Solar radiation doesn't penetrate Earth's atmosphere to harm people on the ground</li>
+                                <li>No special precautions are needed for those not flying or in space</li>
+                                <li>Monitor space weather forecasts if you have planned flights</li>
+                            </ul>
+                            
+                            <div class="bg-slate-700 p-4 rounded-lg">
+                                <h4 class="text-lg font-semibold text-yellow-400 mb-2">Space Exploration Impact</h4>
+                                <p>Astronauts on the International Space Station may need to move to more shielded areas during severe solar radiation events. Future Mars missions will need to address this challenge for long-duration spaceflight.</p>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'uv':
+                    modalTitle.textContent = 'UV Protection Guide';
+                    modalContent.innerHTML = `
+                        <div class="space-y-4">
+                            <p>Ultraviolet (UV) radiation from the sun can damage skin and eyes, leading to sunburn, premature aging, and increased risk of skin cancer.</p>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">Daily Protection:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Apply broad-spectrum SPF 30+ sunscreen 15-30 minutes before going outside</li>
+                                <li>Reapply sunscreen every 2 hours, or after swimming or sweating</li>
+                                <li>Wear protective clothing: wide-brimmed hats, long sleeves, sunglasses</li>
+                                <li>Seek shade between 10 AM and 4 PM when UV rays are strongest</li>
+                                <li>Remember that UV rays can penetrate clouds and reflect off surfaces</li>
+                            </ul>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">UV Index Guidelines:</h4>
+                            <div class="grid grid-cols-2 gap-4">
+                                <div class="bg-green-900 bg-opacity-30 p-3 rounded-lg">
+                                    <h5 class="font-semibold text-green-400">Low (0-2)</h5>
+                                    <p class="text-sm">Minimal protection needed for normal activity</p>
+                                </div>
+                                <div class="bg-yellow-900 bg-opacity-30 p-3 rounded-lg">
+                                    <h5 class="font-semibold text-yellow-400">Moderate (3-5)</h5>
+                                    <p class="text-sm">Wear sunscreen, hat, and sunglasses</p>
+                                </div>
+                                <div class="bg-orange-900 bg-opacity-30 p-3 rounded-lg">
+                                    <h5 class="font-semibold text-orange-400">High (6-7)</h5>
+                                    <p class="text-sm">Full protection and limit midday exposure</p>
+                                </div>
+                                <div class="bg-red-900 bg-opacity-30 p-3 rounded-lg">
+                                    <h5 class="font-semibold text-red-400">Very High/Extreme (8+)</h5>
+                                    <p class="text-sm">Maximum protection, minimize sun exposure</p>
+                                </div>
+                            </div>
+                            
+                            <div class="bg-slate-700 p-4 rounded-lg">
+                                <h4 class="text-lg font-semibold text-yellow-400 mb-2">Sunscreen Tips</h4>
+                                <p>Use about 1 ounce (a shot glass full) of sunscreen to cover your entire body. Most people apply only 25-50% of the recommended amount!</p>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'skin':
+                    modalTitle.textContent = 'Skin Health Guide';
+                    modalContent.innerHTML = `
+                        <div class="space-y-4">
+                            <p>Maintaining healthy skin requires ongoing care and protection, especially from UV radiation.</p>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">Skin Self-Examination:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Perform monthly skin self-exams to check for changes</li>
+                                <li>Use the ABCDE rule for moles: Asymmetry, Border irregularity, Color variation, Diameter >6mm, Evolution</li>
+                                <li>See a dermatologist annually for professional skin checks</li>
+                                <li>Pay special attention to areas that get sun exposure</li>
+                            </ul>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">Daily Skin Care:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Use moisturizers with SPF even on cloudy days</li>
+                                <li>Stay hydrated to maintain skin elasticity</li>
+                                <li>Consider antioxidant serums to help repair sun damage</li>
+                                <li>Wear protective clothing when outdoors for extended periods</li>
+                            </ul>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">After Sun Exposure:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Cool showers can help soothe sun-exposed skin</li>
+                                <li>Apply aloe vera for natural cooling and healing</li>
+                                <li>Use after-sun products with nourishing ingredients</li>
+                                <li>Drink extra water to rehydrate</li>
+                            </ul>
+                            
+                            <div class="bg-slate-700 p-4 rounded-lg">
+                                <h4 class="text-lg font-semibold text-yellow-400 mb-2">Skin Recovery</h4>
+                                <p>It takes about 4-6 weeks for your skin to recover from sunburn damage at a cellular level, even after visible redness fades. This is why consistent protection is so important!</p>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                case 'children':
+                    modalTitle.textContent = 'Children Protection Guide';
+                    modalContent.innerHTML = `
+                        <div class="space-y-4">
+                            <p>Children's skin is more sensitive to UV damage, and sun exposure during childhood is a major risk factor for developing skin cancer later in life.</p>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">For Infants (0-6 months):</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Keep infants out of direct sunlight completely</li>
+                                <li>Use shade, protective clothing, and stroller canopies</li>
+                                <li>Avoid sunscreen for babies under 6 months (use physical barriers instead)</li>
+                                <li>Schedule outdoor time before 10 AM or after 4 PM</li>
+                            </ul>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">For Children (6+ months):</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Use baby-safe sunscreen with SPF 30+ (mineral-based preferred)</li>
+                                <li>Reapply sunscreen every 2 hours and after swimming/sweating</li>
+                                <li>Dress children in UPF-rated clothing when possible</li>
+                                <li>Use wide-brimmed hats and UV-blocking sunglasses</li>
+                                <li>Teach sun safety habits early</li>
+                            </ul>
+                            
+                            <h4 class="text-lg font-semibold text-blue-400">For Schools and Outdoor Activities:</h4>
+                            <ul class="list-disc pl-5 space-y-2">
+                                <li>Schedule outdoor activities in early morning or late afternoon</li>
+                                <li>Ensure adequate shade is available</li>
+                                <li>Implement a "No Hat, No Play" policy</li>
+                                <li>Allow time for sunscreen application before outdoor activities</li>
+                            </ul>
+                            
+                            <div class="bg-slate-700 p-4 rounded-lg">
+                                <h4 class="text-lg font-semibold text-yellow-400 mb-2">Important Note</h4>
+                                <p>Just one severe sunburn in childhood doubles the risk of developing melanoma later in life. Protecting children's skin is an investment in their future health!</p>
+                            </div>
+                        </div>
+                    `;
+                    break;
+                default:
+                    modalTitle.textContent = 'Protection Guide';
+                    modalContent.innerHTML = '<p>Guide content not found.</p>';
+            }
+            
+            // Show modal
+            modal.classList.remove('hidden');
+        }
+        
+        function closeGuideModal() {
+            document.getElementById('guide-modal').classList.add('hidden');
+        }
+        
+        // Skin Type Quiz Functions
+        const quizQuestions = [
+            {
+                question: "What happens when your skin is exposed to the sun for a long time without protection?",
+                options: [
+                    "Always burns severely, blisters, and peels",
+                    "Usually burns, sometimes blisters, and peels",
+                    "Sometimes mild burn, gradually tans",
+                    "Rarely burns, tans easily",
+                    "Very rarely burns, tans very easily",
+                    "Never burns, deeply pigmented"
+                ]
+            },
+            {
+                question: "What color is your natural skin (areas not exposed to sun)?",
+                options: [
+                    "Ivory white",
+                    "Fair or pale",
+                    "Fair to beige, with golden undertone",
+                    "Olive or light brown",
+                    "Dark brown",
+                    "Deeply pigmented dark brown to black"
+                ]
+            },
+            {
+                question: "How does your skin respond to tanning?",
+                options: [
+                    "Never tans, always burns",
+                    "Tans minimally with difficulty",
+                    "Tans gradually to light brown",
+                    "Tans moderately to medium brown",
+                    "Tans profusely to dark brown",
+                    "Deeply pigmented, no change in color"
+                ]
+            },
+            {
+                question: "What is your natural hair color?",
+                options: [
+                    "Red or light blonde",
+                    "Blonde",
+                    "Dark blonde to light brown",
+                    "Dark brown",
+                    "Dark brown to black",
+                    "Black"
+                ]
+            },
+            {
+                question: "What color are your eyes?",
+                options: [
+                    "Light blue, light gray, or light green",
+                    "Blue, gray, or green",
+                    "Hazel or light brown",
+                    "Brown",
+                    "Dark brown",
+                    "Brownish black"
+                ]
+            },
+            {
+                question: "How sensitive is your face to the sun?",
+                options: [
+                    "Very sensitive",
+                    "Sensitive",
+                    "Normal",
+                    "Resistant",
+                    "Very resistant",
+                    "Extremely resistant"
+                ]
+            }
+        ];
+        
+        let currentQuestionIndex = 0;
+        let quizAnswers = [];
+        
+        function initializeQuiz() {
+            currentQuestionIndex = 0;
+            quizAnswers = [];
+            updateQuizQuestion();
+            document.getElementById('quiz-container').classList.remove('hidden');
+            document.getElementById('quiz-result').classList.add('hidden');
+            document.getElementById('prev-btn').disabled = true;
+        }
+        
+        function updateQuizQuestion() {
+            const questionContainer = document.getElementById('question-container');
+            const currentQuestion = quizQuestions[currentQuestionIndex];
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercentage = ((currentQuestionIndex) / quizQuestions.length) * 100;
+            
+            document.getElementById('current-question').textContent = currentQuestionIndex + 1;
+            document.getElementById('quiz-percentage').textContent = `${Math.round(progressPercentage)}%`;
+            progressBar.style.width = `${progressPercentage}%`;
+            
+            let optionsHTML = `
+                <h3 class="text-lg font-semibold mb-4">${currentQuestion.question}</h3>
+                <div class="space-y-3">
+            `;
+            
+            currentQuestion.options.forEach((option, index) => {
+                const isSelected = quizAnswers[currentQuestionIndex] === index;
+                optionsHTML += `
+                    <div class="quiz-option ${isSelected ? 'selected' : ''} p-3 rounded-lg cursor-pointer border border-slate-700" data-index="${index}">
+                        ${option}
+                    </div>
+                `;
+            });
+            
+            optionsHTML += '</div>';
+            questionContainer.innerHTML = optionsHTML;
+            
+            // Add event listeners to options
+            document.querySelectorAll('.quiz-option').forEach(option => {
+                option.addEventListener('click', () => {
+                    document.querySelectorAll('.quiz-option').forEach(opt => opt.classList.remove('selected'));
+                    option.classList.add('selected');
+                    quizAnswers[currentQuestionIndex] = parseInt(option.getAttribute('data-index'));
+                });
+            });
+        }
+        
+        document.getElementById('next-btn').addEventListener('click', () => {
+            if (quizAnswers[currentQuestionIndex] === undefined) {
+                alert('Please select an option before continuing.');
+                return;
+            }
+            
+            if (currentQuestionIndex < quizQuestions.length - 1) {
+                currentQuestionIndex++;
+                updateQuizQuestion();
+                document.getElementById('prev-btn').disabled = false;
+            } else {
+                showQuizResult();
+            }
+        });
+        
+        document.getElementById('prev-btn').addEventListener('click', () => {
+            if (currentQuestionIndex > 0) {
+                currentQuestionIndex--;
+                updateQuizQuestion();
+                if (currentQuestionIndex === 0) {
+                    document.getElementById('prev-btn').disabled = true;
+                }
+            }
+        });
+        
+        document.getElementById('retake-quiz').addEventListener('click', initializeQuiz);
+        
+        function showQuizResult() {
+            // Calculate skin type based on answers
+            let total = 0;
+            quizAnswers.forEach(answer => {
+                total += answer;
+            });
+            
+            // Average score (0-5 range)
+            const avgScore = total / quizAnswers.length;
+            
+            // Determine skin type (Fitzpatrick scale)
+            let skinType, description, sensitivity, spf, sunburnRisk;
+            
+            if (avgScore < 1) {
+                skinType = "Type I";
+                description = "Very fair skin, always burns, never tans";
+                sensitivity = 100;
+                spf = "SPF 50+";
+                sunburnRisk = "Extremely high risk. Burns in less than 10 minutes of unprotected exposure.";
+            } else if (avgScore < 2) {
+                skinType = "Type II";
+                description = "Fair skin, burns easily, tans minimally";
+                sensitivity = 83;
+                spf = "SPF 50";
+                sunburnRisk = "Very high risk. Burns in 10-20 minutes of unprotected exposure.";
+            } else if (avgScore < 3) {
+                skinType = "Type III";
+                description = "Medium skin, sometimes burns, gradually tans";
+                sensitivity = 67;
+                spf = "SPF 30-50";
+                sunburnRisk = "High risk. Burns in 20-30 minutes of unprotected exposure.";
+            } else if (avgScore < 4) {
+                skinType = "Type IV";
+                description = "Olive skin, rarely burns, tans easily";
+                sensitivity = 50;
+                spf = "SPF 30";
+                sunburnRisk = "Moderate risk. Burns in 30-45 minutes of unprotected exposure.";
+            } else if (avgScore < 5) {
+                skinType = "Type V";
+                description = "Brown skin, very rarely burns, tans darkly";
+                sensitivity = 33;
+                spf = "SPF 15-30";
+                sunburnRisk = "Low risk. Burns in 45-60 minutes of unprotected exposure.";
+            } else {
+                skinType = "Type VI";
+                description = "Dark brown or black skin, never burns";
+                sensitivity = 17;
+                spf = "SPF 15";
+                sunburnRisk = "Very low risk. Rarely burns, but still needs protection from prolonged exposure.";
+            }
+            
+            // Update result display
+            document.getElementById('skin-type-title').textContent = skinType;
+            document.getElementById('skin-type-description').textContent = description;
+            document.getElementById('sensitivity-level').style.width = `${sensitivity}%`;
+            document.getElementById('recommended-spf').textContent = spf;
+            document.getElementById('sunburn-risk').textContent = sunburnRisk;
+            
+            // Show result
+            document.getElementById('quiz-container').classList.add('hidden');
+            document.getElementById('quiz-result').classList.remove('hidden');
+        }
+        
+        // Initialize quiz when tab is shown
+        document.querySelector('[data-tab="quiz"]').addEventListener('click', initializeQuiz);
+        
+        // Reminder Functions
+        function showAddReminderModal() {
+            document.getElementById('reminder-modal-title').textContent = 'Add Reminder';
+            document.getElementById('reminder-name').value = '';
+            document.getElementById('reminder-time').value = '';
+            document.getElementById('reminder-note').value = '';
+            document.querySelectorAll('.repeat-option').forEach(btn => btn.classList.remove('bg-blue-600'));
+            document.getElementById('reminder-modal').classList.remove('hidden');
+        }
+        
+        function closeReminderModal() {
+            document.getElementById('reminder-modal').classList.add('hidden');
+        }
+        
+        function editReminder(id) {
+            document.getElementById('reminder-modal-title').textContent = 'Edit Reminder';
+            // In a real app, we would fetch the reminder data by ID
+            // For demo, we'll just show the modal with some sample data
+            document.getElementById('reminder-name').value = 'Sample Reminder';
+            document.getElementById('reminder-time').value = '12:00';
+            document.getElementById('reminder-note').value = 'Sample note';
+            document.getElementById('reminder-modal').classList.remove('hidden');
+        }
+        
+        function deleteReminder(id) {
+            if (confirm('Are you sure you want to delete this reminder?')) {
+                // In a real app, we would delete the reminder by ID
+                // For demo, we'll just show an alert
+                alert('Reminder deleted!');
+            }
+        }
+        
+        // Set up event listeners
+        document.getElementById('add-reminder-btn').addEventListener('click', showAddReminderModal);
+        
+        document.querySelectorAll('.repeat-option').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.repeat-option').forEach(btn => btn.classList.remove('bg-blue-600'));
+                button.classList.add('bg-blue-600');
+            });
+        });
+        
+        document.getElementById('reminder-form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            // In a real app, we would save the reminder data
+            // For demo, we'll just close the modal and show an alert
+            alert('Reminder saved!');
+            closeReminderModal();
+        });
+        
+        // Initialize the dashboard
+        updateTime();
+        createCharts();
+        simulateDataUpdates();
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95572115a00e08b7',t:'MTc1MDg4MjQ0Ni4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>
