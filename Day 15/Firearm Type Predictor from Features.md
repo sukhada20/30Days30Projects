@@ -202,6 +202,3 @@ Performance Evaluation
 ---
 
 ~ sukhada20
-
-
-⭐ If you found this project useful, consider giving the repository a star!
